@@ -15,6 +15,8 @@ const ImageComponent = ({ url, imageText, textPosition }: { url: string; imageTe
       <img src={url} />
       <span style={{
         position: 'absolute',
+        backgroundColor: 'orange',
+        zIndex: 10,
         ...textPosition,
       }}>
         {imageText}
@@ -23,11 +25,11 @@ const ImageComponent = ({ url, imageText, textPosition }: { url: string; imageTe
   );
 };
 
-const Images = ({ searchQuery, imageText, textPosition }: { searchQuery: string, imageText: string; textPosition: Record<string, string | undefined> }) => {
+const Images = ({ searchQuery, imageText, textPosition, page }: { searchQuery: string, imageText: string; textPosition: Record<string, string | undefined>, page: number }) => {
   const query = useQuery({
-    queryKey: buildQuery(searchQuery, 0, 3), queryFn: async ({ queryKey: [_, query, page, limit] }) => {
+    queryKey: buildQuery(searchQuery, page, 3), queryFn: async ({ queryKey: [_, query, page, limit] }) => {
       console.log('test');
-      const data = await fetch(`https://api.giphy.com/v1/stickers/search?q=${query}&limit=${limit}&rating=g&api_key=1bkG7ky5cmw5SLyvNfElcR1iYVzs38Zq`);
+      const data = await fetch(`https://api.giphy.com/v1/stickers/search?q=${query}&offset=${page * limit}&limit=${limit}&rating=g&api_key=1bkG7ky5cmw5SLyvNfElcR1iYVzs38Zq`);
       return await data.json();
     }
   });
@@ -37,10 +39,7 @@ const Images = ({ searchQuery, imageText, textPosition }: { searchQuery: string,
   const imageUrls = query.data?.data.flatMap((d: any) => d.images.downsized_medium.url) || [];
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'row',
-    }}>
+    <div className="image-container">
       {imageUrls.map((url: string) => <ImageComponent imageText={imageText} url={url} textPosition={textPosition} />)}
     </div>
   );
@@ -51,6 +50,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [imageText, setImageText] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('center top');
+  const [page, setPage] = useState(0);
   const determinedPosition = useMemo(() => {
     switch (selectedPosition) {
       case 'center top':
@@ -65,15 +65,26 @@ function App() {
   }, [selectedPosition]);
 
   return (
-    <div className="App">
-      <input type="text" onChange={(e) => setSearchQuery(e.target.value)} />
-      <input type="text" onChange={(e) => setImageText(e.target.value)} />
-      <select onChange={(e) => setSelectedPosition(e.target.value)}>
-        <option value="center top">Center Top</option>
-        <option value="center bottom">Center Bottom</option>
-        <option value="below image">Below Image</option>
-      </select>
-      <Images searchQuery={searchQuery} imageText={imageText} textPosition={determinedPosition} />
+    <div className="App" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+    }}>
+      <div>
+        <input type="text" placeholder='Search for image' onChange={(e) => setSearchQuery(e.target.value)} />
+        <input type="text" placeholder='Text for image' onChange={(e) => setImageText(e.target.value)} />
+        <select onChange={(e) => setSelectedPosition(e.target.value)}>
+          <option value="center top">Center Top</option>
+          <option value="center bottom">Center Bottom</option>
+          <option value="below image">Below Image</option>
+        </select>
+        <button onClick={() => setPage((page) => Math.max(page - 1, 0))}>Previous page</button>
+        <button onClick={() => setPage(page + 1)}>Next page</button>
+        <span>
+          Current page: {page + 1}
+        </span>
+      </div>
+      <Images searchQuery={searchQuery} imageText={imageText} textPosition={determinedPosition} page={page} />
     </div>
   );
 }
